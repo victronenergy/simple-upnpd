@@ -3,9 +3,11 @@
 #include <gmodule.h>
 
 static gchar *xmlFileName = "description.xml";
+static int debug;
 
 static GOptionEntry entries[] =
 {
+	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &debug, "debug, don't fork", 0 },
 	{ "xml", 'x', 0, G_OPTION_ARG_FILENAME, &xmlFileName, "upnp description file", 0 },
 	{ NULL }
 };
@@ -17,6 +19,7 @@ int main(int argc, char **argv)
 	GError *error = NULL;
 	GUPnPContext *context;
 	GUPnPRootDevice *dev;
+	pid_t pid;
 
 #if !GLIB_CHECK_VERSION(2,35,0)
 	g_type_init();
@@ -42,6 +45,21 @@ int main(int argc, char **argv)
 	if (dev == 0) {
 		g_print("creating device failed\n");
 		return EXIT_FAILURE;
+	}
+
+	if (!debug) {
+		pid = fork();
+		if (pid < 0) {
+			g_print("Failed to fork\n");
+			return EXIT_FAILURE;
+		}
+
+		if (pid != 0)
+			return EXIT_SUCCESS;
+
+		fclose(stdin);
+		fclose(stdout);
+		fclose(stderr);
 	}
 
 	gupnp_root_device_set_available(dev, TRUE);
