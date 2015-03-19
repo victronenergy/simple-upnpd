@@ -67,7 +67,8 @@ int main(int argc, char **argv)
 	cp_hash = g_hash_table_new_full(g_direct_hash, (GEqualFunc) context_equal,
 									g_object_unref, g_object_unref);
 
-	context_manager = gupnp_context_manager_create(0);
+	//context_manager = gupnp_context_manager_create(0); // Since 0.17.2
+	context_manager = gupnp_context_manager_new(NULL, 0); // Since 0.13.0
 	g_assert(context_manager != NULL);
 	g_signal_connect(context_manager, "context-available", G_CALLBACK(on_context_available), NULL);
 	g_signal_connect(context_manager, "context-unavailable", G_CALLBACK(on_context_unavailable), NULL);
