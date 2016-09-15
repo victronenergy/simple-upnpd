@@ -1,6 +1,7 @@
 #include <libgupnp/gupnp.h>
 #include <stdlib.h>
 #include <gmodule.h>
+#include <string.h>
 
 static gchar *xmlFileName = "description.xml";
 static int debug;
@@ -12,6 +13,24 @@ static GOptionEntry entries[] =
 	{ "xml", 'x', 0, G_OPTION_ARG_FILENAME, &xmlFileName, "upnp description file", 0 },
 	{ NULL }
 };
+
+void soup_callback(SoupServer *server,
+                       SoupMessage *msg,
+                       const char *path,
+                       GHashTable *query,
+                       SoupClientContext *client,
+                       gpointer user_data)
+{
+	int url_max = 7 /*http://*/ +15 /*ip*/ +1;
+	char url[url_max];
+	memset(url, 0x0, url_max-1);
+
+	GUPnPContext *context = user_data;
+	const char *ip = gupnp_context_get_host_ip(context);
+	snprintf(url, url_max -1, "http://%s", ip);
+
+	soup_message_set_redirect(msg, 301, url);
+}
 
 static gboolean context_equal(GUPnPContext *context1, GUPnPContext *context2)
 {
@@ -35,6 +54,8 @@ static void on_context_available(GUPnPContextManager *context_manager,
 	}
 	g_hash_table_insert(cp_hash, g_object_ref(context), dev);
 	gupnp_root_device_set_available(dev, TRUE);
+
+	soup_server_add_handler(gupnp_context_get_server(context), "/", soup_callback, context, NULL);
 }
 
 static void on_context_unavailable(GUPnPContextManager *context_manager, GUPnPContext *context, gpointer *user_data)
