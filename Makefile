@@ -8,5 +8,5 @@ override LDLIBS += ${shell pkg-config --libs $(PKGS)}
 simple-upnpd: simple-upnpd.o
 
 clean:
-	rm -f upnp-announced.o upnp-announced
+	rm -f simple-upnpd.o simple-upnpd
 
