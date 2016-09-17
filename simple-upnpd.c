@@ -14,22 +14,16 @@ static GOptionEntry entries[] =
 	{ NULL }
 };
 
-void soup_callback(SoupServer *server,
-                       SoupMessage *msg,
-                       const char *path,
-                       GHashTable *query,
-                       SoupClientContext *client,
-                       gpointer user_data)
+static void soup_callback(SoupServer *server, SoupMessage *msg, const char *path,
+					GHashTable *query, SoupClientContext *client, gpointer user_data)
 {
-	int url_max = 7 /*http://*/ +15 /*ip*/ +1;
-	char url[url_max];
-	memset(url, 0x0, url_max-1);
-
 	GUPnPContext *context = user_data;
 	const char *ip = gupnp_context_get_host_ip(context);
-	snprintf(url, url_max -1, "http://%s", ip);
+	gchar *url;
 
+	url = g_strdup_printf("http://%s", ip);
 	soup_message_set_redirect(msg, 301, url);
+	g_free(url);
 }
 
 static gboolean context_equal(GUPnPContext *context1, GUPnPContext *context2)
