@@ -14,6 +14,13 @@ static GOptionEntry entries[] =
 	{ NULL }
 };
 
+#ifdef GUPNP_1_2
+static const char *gupnp_context_get_host_ip(GUPnPContext *context)
+{
+	return gssdp_client_get_host_ip(GSSDP_CLIENT(context));
+}
+#endif
+
 static void soup_callback(SoupServer *server, SoupMessage *msg, const char *path,
 					GHashTable *query, SoupClientContext *client, gpointer user_data)
 {
@@ -37,11 +44,14 @@ static void on_context_available(GUPnPContextManager *context_manager,
 {
 	GUPnPRootDevice *dev;
 
-	g_print("Context available IP/Host %s and port %d\n", gupnp_context_get_host_ip(context),
-							gupnp_context_get_port(context));
+	g_print("Context available IP/Host %s\n", gupnp_context_get_host_ip(context));
 
 	/* Create root device */
+#ifdef GUPNP_1_2
+	dev = gupnp_root_device_new(context, xmlFileName, "", NULL);
+#else
 	dev = gupnp_root_device_new(context, xmlFileName, "");
+#endif
 	if (dev == 0) {
 		g_print("creating device failed\n");
 		exit(EXIT_FAILURE);
@@ -54,8 +64,7 @@ static void on_context_available(GUPnPContextManager *context_manager,
 
 static void on_context_unavailable(GUPnPContextManager *context_manager, GUPnPContext *context, gpointer *user_data)
 {
-	g_print("Dettaching from IP/Host %s and port %d\n", gupnp_context_get_host_ip(context),
-							gupnp_context_get_port(context));
+	g_print("Dettaching from IP/Host %s\n", gupnp_context_get_host_ip(context));
 
 	g_hash_table_remove(cp_hash, context);
 }
@@ -82,8 +91,11 @@ int main(int argc, char **argv)
 	cp_hash = g_hash_table_new_full(g_direct_hash, (GEqualFunc) context_equal,
 									g_object_unref, g_object_unref);
 
-	//context_manager = gupnp_context_manager_create(0); // Since 0.17.2
+#ifdef GUPNP_1_2
+	context_manager = gupnp_context_manager_create(0); // Since 0.17.2
+#else
 	context_manager = gupnp_context_manager_new(NULL, 0); // Since 0.13.0
+#endif
 	g_assert(context_manager != NULL);
 	g_signal_connect(context_manager, "context-available", G_CALLBACK(on_context_available), NULL);
 	g_signal_connect(context_manager, "context-unavailable", G_CALLBACK(on_context_unavailable), NULL);
