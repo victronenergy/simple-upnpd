@@ -1,7 +1,19 @@
 #include <libgupnp/gupnp.h>
+#include <libsoup/soup.h>
+
 #include <stdlib.h>
 #include <gmodule.h>
 #include <string.h>
+
+#if !defined(GUPNP_VERSION_MAJOR) || !defined(GUPNP_VERSION_MINOR)
+#error gupnp version unknown
+#endif
+
+#define GUPNP_CHECK_VERSION(major,minor,micro)    \
+	(GUPNP_VERSION_MAJOR > (major) || \
+	(GUPNP_VERSION_MAJOR == (major) && GUPNP_VERSION_MINOR > (minor)) || \
+	(GUPNP_VERSION_MAJOR == (major) && GUPNP_VERSION_MINOR == (minor) && \
+	GUPNP_VERSION_MICRO >= (micro)))
 
 static gchar *xmlFileName = "description.xml";
 static int debug;
@@ -14,22 +26,31 @@ static GOptionEntry entries[] =
 	{ NULL }
 };
 
-#ifdef GUPNP_1_2
+#if GUPNP_CHECK_VERSION(1,2,0)
 static const char *gupnp_context_get_host_ip(GUPnPContext *context)
 {
 	return gssdp_client_get_host_ip(GSSDP_CLIENT(context));
 }
 #endif
 
+#if SOUP_CHECK_VERSION(3,0,0)
+static void soup_callback(SoupServer *server, SoupServerMessage *msg, const char *path,
+					GHashTable *query, gpointer user_data)
+#else
 static void soup_callback(SoupServer *server, SoupMessage *msg, const char *path,
 					GHashTable *query, SoupClientContext *client, gpointer user_data)
+#endif
 {
 	GUPnPContext *context = user_data;
 	const char *ip = gupnp_context_get_host_ip(context);
 	gchar *url;
 
 	url = g_strdup_printf("http://%s", ip);
+#if SOUP_CHECK_VERSION(3,0,0)
+	soup_server_message_set_redirect(msg, 301, url);
+#else
 	soup_message_set_redirect(msg, 301, url);
+#endif
 	g_free(url);
 }
 
@@ -47,7 +68,7 @@ static void on_context_available(GUPnPContextManager *context_manager,
 	g_print("Context available IP/Host %s\n", gupnp_context_get_host_ip(context));
 
 	/* Create root device */
-#ifdef GUPNP_1_2
+#if GUPNP_CHECK_VERSION(1,2,0)
 	dev = gupnp_root_device_new(context, xmlFileName, "", NULL);
 #else
 	dev = gupnp_root_device_new(context, xmlFileName, "");
@@ -91,7 +112,7 @@ int main(int argc, char **argv)
 	cp_hash = g_hash_table_new_full(g_direct_hash, (GEqualFunc) context_equal,
 									g_object_unref, g_object_unref);
 
-#ifdef GUPNP_1_2
+#if GUPNP_CHECK_VERSION(1,2,0)
 	context_manager = gupnp_context_manager_create(0); // Since 0.17.2
 #else
 	context_manager = gupnp_context_manager_new(NULL, 0); // Since 0.13.0
